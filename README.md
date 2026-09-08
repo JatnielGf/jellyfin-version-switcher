@@ -70,9 +70,12 @@ See [`CHANGELOG.md`](CHANGELOG.md) for the project history.
 
 Older stable versions will be preserved through Git history and GitHub Releases.
 
-## Credits
+## Credits & Acknowledgements
 
 Developed by [JatnielGf](https://github.com/JatnielGf), with development assistance from ChatGPT (GPT-5.6 Luna).
 
+Thanks to [@n00bcodr](https://github.com/n00bcodr) for creating and maintaining the [Jellyfin JavaScript Injector](https://github.com/n00bcodr/Jellyfin-JavaScript-Injector), which makes it possible to inject custom JavaScript into Jellyfin Web and serves as an important dependency for this project.
+
 **Author:** JatnielGf  
-**Development assistance:** ChatGPT (GPT-5.6 Luna)
+**Development assistance:** ChatGPT (GPT-5.6 Luna)  
+**JavaScript Injector:** [@n00bcodr](https://github.com/n00bcodr)
