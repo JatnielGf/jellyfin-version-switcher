@@ -10,7 +10,7 @@ A lightweight Jellyfin Web version switcher for quickly switching between availa
 
 ### 1. Install JavaScript Injector
 
-JavaScript Injector is **not included by default** with Jellyfin. It is a separate community plugin that must be installed first. urlJavaScript Injector repositoryhttps://github.com/n00bcodr/Jellyfin-JavaScript-Injector
+JavaScript Injector is **not included by default** with Jellyfin. It is a separate community plugin that must be installed first. urlJavaScript Injector: repositoryhttps://github.com/n00bcodr/Jellyfin-JavaScript-Injector
 
 For Jellyfin 10.11:
 
@@ -25,7 +25,7 @@ For Jellyfin 10.11:
 6. Return to **Catalog**, search for **JavaScript Injector**, and install it.
 7. Restart the Jellyfin server.
 
-The JavaScript Injector project provides version-specific repository manifests for Jellyfin 10.11 and other supported versions. citeturn1search0turn1search4
+The JavaScript Injector project provides version-specific repository manifests for Jellyfin 10.11 and other supported versions.
 
 ### 2. Add Version Switcher
 
@@ -39,7 +39,7 @@ The JavaScript Injector project provides version-specific repository manifests f
 
 ### Docker note
 
-For Jellyfin 10.11 Docker installations, JavaScript Injector recommends having the **File Transformation** plugin installed to avoid permission and injection issues. citeturn1search0
+For Jellyfin 10.11 Docker installations, JavaScript Injector recommends having the **File Transformation** plugin installed to avoid permission and injection issues.
 
 ## Features
 
