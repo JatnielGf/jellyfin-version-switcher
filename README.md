@@ -41,3 +41,10 @@ A lightweight Jellyfin Web version switcher for quickly switching between availa
 See [`CHANGELOG.md`](CHANGELOG.md) for the project history.
 
 Older stable versions will be preserved through Git history and GitHub Releases.
+
+## Credits
+
+Developed by [JatnielGf](https://github.com/JatnielGf), with development assistance from ChatGPT (GPT-5.6 Luna).
+
+**Author:** JatnielGf  
+**Development assistance:** ChatGPT (GPT-5.6 Luna)
