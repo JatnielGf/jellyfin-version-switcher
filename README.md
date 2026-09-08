@@ -10,7 +10,9 @@ A lightweight Jellyfin Web version switcher for quickly switching between availa
 
 ### 1. Install JavaScript Injector
 
-JavaScript Injector is **not included by default** with Jellyfin. It is a separate community plugin that must be installed first. urlJavaScript Injector: repositoryhttps://github.com/n00bcodr/Jellyfin-JavaScript-Injector
+JavaScript Injector is **not included by default** with Jellyfin. It is a separate community plugin that must be installed first.
+
+Official plugin repository: [Jellyfin JavaScript Injector](https://github.com/n00bcodr/Jellyfin-JavaScript-Injector)
 
 For Jellyfin 10.11:
 
