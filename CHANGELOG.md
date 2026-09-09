@@ -1,5 +1,36 @@
 # Changelog
 
+## [1.3.0] - Stable
+
+### Added
+
+- Added audio track preservation when switching between versions.
+- Added subtitle track preservation when switching between versions.
+- Added support for preserving subtitles being turned off.
+- Added forced-subtitle detection using Jellyfin metadata and common track naming.
+- Added improved resolution detection for 4K and 1080p cinematic files.
+
+### Improvements
+
+- Improved version switching through Jellyfin's internal playback manager.
+- Improved menu responsiveness by loading Media Sources asynchronously.
+- Improved subtitle matching across versions.
+- Added automatic menu cleanup when exiting fullscreen.
+- Improved English and Spanish UI support.
+
+### Fixed
+
+- Fixed cinematic resolutions such as 3840x1608 being incorrectly classified by height.
+- Fixed forced subtitles being matched incorrectly between different versions.
+- Fixed selected audio and subtitle tracks not being preserved when switching versions.
+- Fixed subtitles being unintentionally enabled when they were turned off.
+- Fixed the menu remaining open after exiting fullscreen.
+
+### Compatibility
+
+- Tested with Jellyfin Web and the Jellyfin iOS client.
+- Windows Desktop, Android, Fire TV, LG webOS, and Wholphin are currently not supported.
+
 ## [1.2.8] - Stable
 
 ### Added
