@@ -1,7 +1,7 @@
 (() => {
     "use strict";
 
-    const VERSION = "1.2.8";
+    const VERSION = "1.3.0";
 
     const BUTTON_ID = "version-switcher-native-button";
     const MENU_ID = "version-switcher-native-menu";
@@ -20,15 +20,15 @@
         ? {
             version: "Versión",
             unknown: "Desconocida",
+            loading: "Cargando...",
             noSources: "No se encontraron fuentes.",
-            changing: "Cambiando...",
             completed: "Cambio completado."
         }
         : {
             version: "Version",
             unknown: "Unknown",
+            loading: "Loading...",
             noSources: "No sources found.",
-            changing: "Changing...",
             completed: "Switch completed."
         };
 
@@ -83,29 +83,6 @@
         console.error("[Version Switcher]", ...args);
     }
 
-    function describe(element) {
-        if (!element) {
-            return "NULL";
-        }
-
-        const id = element.id
-            ? `#${element.id}`
-            : "";
-
-        const cls =
-            typeof element.className === "string"
-                ? `.${element.className
-                    .trim()
-                    .replace(/\s+/g, ".")}`
-                : "";
-
-        return `${element.tagName}${id}${cls}`;
-    }
-
-    log(`V${VERSION} iniciando.`);
-    log("URL:", location.href);
-    log("Idioma:", isSpanish ? "Español" : "English");
-
     function getPlaybackManager() {
         try {
             let found = null;
@@ -137,6 +114,56 @@
 
             return null;
         }
+    }
+
+    function getCurrentStreamIndexes(
+        pm,
+        player
+    ) {
+        try {
+            if (
+                !pm ||
+                !player
+            ) {
+                return {
+                    audioStreamIndex: null,
+                    subtitleStreamIndex: null
+                };
+            }
+
+            if (
+                typeof pm.getPlayerState ===
+                "function"
+            ) {
+                const playerState =
+                    pm.getPlayerState(
+                        player
+                    );
+
+                const playState =
+                    playerState?.PlayState;
+
+                return {
+                    audioStreamIndex:
+                        playState?.AudioStreamIndex ??
+                        null,
+
+                    subtitleStreamIndex:
+                        playState?.SubtitleStreamIndex ??
+                        null
+                };
+            }
+        } catch (e) {
+            log(
+                "Error obteniendo índices actuales:",
+                e
+            );
+        }
+
+        return {
+            audioStreamIndex: null,
+            subtitleStreamIndex: null
+        };
     }
 
     function getCurrentPlayback() {
@@ -258,41 +285,29 @@
                     stream.Type === "Video"
             );
 
+        const width =
+            videoStream?.Width;
+
         const height =
             videoStream?.Height;
 
-        if (!height) {
+        if (!width || !height) {
             return TEXT.unknown;
         }
 
-        if (height >= 2160) {
+        if (width >= 3000) {
             return "4K";
         }
 
-        if (height >= 1080) {
+        if (width >= 1800) {
             return "1080p";
         }
 
-        if (height >= 720) {
+        if (width >= 1100) {
             return "720p";
         }
 
         return `${height}p`;
-    }
-
-    function getAudioStream(source) {
-        return source?.MediaStreams?.find(
-            stream =>
-                stream.Type === "Audio"
-        ) || null;
-    }
-
-    function getSubtitleStream(source) {
-        return source?.MediaStreams?.find(
-            stream =>
-                stream.Type === "Subtitle" &&
-                !stream.IsExternal
-        ) || null;
     }
 
     function getStreamLanguage(stream) {
@@ -324,25 +339,96 @@
         ) || null;
     }
 
+    function isSubtitleForced(
+        stream
+    ) {
+        if (!stream) {
+            return false;
+        }
+
+        if (stream.IsForced) {
+            return true;
+        }
+
+        const text = [
+            stream.Title,
+            stream.DisplayTitle
+        ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+
+        return (
+            text.includes("forzad") ||
+            text.includes("forced")
+        );
+    }
+
     function findMatchingSubtitle(
         source,
-        language
+        currentSubtitle
     ) {
         if (
-            !language ||
+            !currentSubtitle ||
             !source?.MediaStreams
         ) {
             return null;
         }
 
-        return source.MediaStreams.find(
-            stream =>
-                stream.Type === "Subtitle" &&
-                !stream.IsExternal &&
-                getStreamLanguage(stream)
-                    ?.toLowerCase() ===
-                    language.toLowerCase()
-        ) || null;
+        const language =
+            getStreamLanguage(
+                currentSubtitle
+            );
+
+        if (!language) {
+            return null;
+        }
+
+        const subtitles =
+            source.MediaStreams.filter(
+                stream =>
+                    stream.Type === "Subtitle" &&
+                    !stream.IsExternal &&
+                    getStreamLanguage(stream)
+                        ?.toLowerCase() ===
+                        language.toLowerCase()
+            );
+
+        if (!subtitles.length) {
+            return null;
+        }
+
+        const currentForced =
+            isSubtitleForced(
+                currentSubtitle
+            );
+
+        const exactMatch =
+            subtitles.find(
+                stream =>
+                    isSubtitleForced(
+                        stream
+                    ) === currentForced &&
+                    Boolean(stream.IsDefault) ===
+                    Boolean(currentSubtitle.IsDefault)
+            );
+
+        if (exactMatch) {
+            return exactMatch;
+        }
+
+        const sameForcedState =
+            subtitles.find(
+                stream =>
+                    isSubtitleForced(
+                        stream
+                    ) === currentForced
+            );
+
+        return (
+            sameForcedState ||
+            subtitles[0]
+        );
     }
 
     function closeMenu() {
@@ -505,11 +591,6 @@
             activeControls =
                 controls;
 
-            log(
-                "OSD ACTIVO:",
-                describe(controls)
-            );
-
             observeControls(controls);
         }
 
@@ -552,7 +633,7 @@
         );
     }
 
-    async function toggleVersionMenu() {
+    function toggleVersionMenu() {
         if (switchInProgress) {
             return;
         }
@@ -571,141 +652,10 @@
             return;
         }
 
-        await openVersionMenu();
+        openVersionMenu();
     }
 
-    async function openVersionMenu() {
-        if (
-            menuOpening ||
-            switchInProgress
-        ) {
-            return;
-        }
-
-        menuOpening = true;
-
-        const operation =
-            ++menuOperation;
-
-        try {
-            const video =
-                getVideo();
-
-            if (!video) {
-                return;
-            }
-
-            const playback =
-                getCurrentPlayback();
-
-            if (
-                !playback.pm ||
-                !playback.item
-            ) {
-                return;
-            }
-
-            const {
-                pm,
-                item,
-                source: currentSource
-            } = playback;
-
-            const positionTicks =
-                Math.floor(
-                    video.currentTime *
-                    10000000
-                );
-
-            const sources =
-                await pm.getPlaybackMediaSources(
-                    item,
-                    {
-                        startPositionTicks:
-                            positionTicks
-                    }
-                );
-
-            if (
-                operation !== menuOperation ||
-                switchInProgress
-            ) {
-                return;
-            }
-
-            if (!sources?.length) {
-                warn(
-                    TEXT.noSources
-                );
-                return;
-            }
-
-            const menu =
-                createMenu(
-                    sources,
-                    currentSource
-                );
-
-            if (
-                operation !== menuOperation
-            ) {
-                return;
-            }
-
-            document.body.appendChild(
-                menu
-            );
-
-            const button =
-                document.getElementById(
-                    BUTTON_ID
-                );
-
-            if (
-                operation !== menuOperation
-            ) {
-                menu.remove();
-                return;
-            }
-
-            if (button) {
-                positionMenu(
-                    menu,
-                    button
-                );
-            }
-
-            installMenuListeners(
-                menu
-            );
-
-            log(
-                "Menú abierto.",
-                sources.length,
-                "fuentes."
-            );
-        } catch (e) {
-            if (
-                operation === menuOperation
-            ) {
-                error(
-                    "Error abriendo menú:",
-                    e
-                );
-            }
-        } finally {
-            if (
-                operation === menuOperation
-            ) {
-                menuOpening = false;
-            }
-        }
-    }
-
-    function createMenu(
-        sources,
-        currentSource
-    ) {
+    function createLoadingMenu() {
         const menu =
             document.createElement(
                 "div"
@@ -731,7 +681,53 @@
             }
         );
 
-        sources.forEach(
+        const row =
+            document.createElement(
+                "div"
+            );
+
+        row.textContent =
+            TEXT.loading;
+
+        Object.assign(
+            row.style,
+            {
+                minHeight: "36px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0 12px",
+                color: "rgba(255,255,255,.75)",
+                fontSize: "14px"
+            }
+        );
+
+        menu.appendChild(row);
+
+        return menu;
+    }
+
+    function replaceMenuContent(
+        menu,
+        sources,
+        currentSource
+    ) {
+        const content =
+            createMenuContent(
+                sources,
+                currentSource
+            );
+
+        menu.replaceChildren(
+            ...content
+        );
+    }
+
+    function createMenuContent(
+        sources,
+        currentSource
+    ) {
+        return sources.map(
             source => {
                 const row =
                     document.createElement(
@@ -797,12 +793,14 @@
                         alignItems: "center",
                         width: "100%",
                         minHeight: "36px",
-                        padding: "6px 8px",
+                        padding: "0 8px",
                         border: "0",
                         borderRadius: "4px",
                         background:
-                            "transparent",
-                        color: "white",
+                            isCurrent
+                                ? "rgba(255,255,255,.10)"
+                                : "transparent",
+                        color: "#fff",
                         cursor: "pointer",
                         fontSize: "14px",
                         textAlign: "left"
@@ -812,12 +810,8 @@
                 row.addEventListener(
                     "mouseenter",
                     () => {
-                        if (
-                            !switchInProgress
-                        ) {
-                            row.style.background =
-                                "rgba(255,255,255,.10)";
-                        }
+                        row.style.background =
+                            "rgba(255,255,255,.12)";
                     }
                 );
 
@@ -825,13 +819,15 @@
                     "mouseleave",
                     () => {
                         row.style.background =
-                            "transparent";
+                            isCurrent
+                                ? "rgba(255,255,255,.10)"
+                                : "transparent";
                     }
                 );
 
                 row.addEventListener(
                     "click",
-                    async event => {
+                    event => {
                         event.preventDefault();
                         event.stopPropagation();
 
@@ -841,22 +837,22 @@
                             return;
                         }
 
-                        if (isCurrent) {
+                        if (
+                            isCurrent
+                        ) {
                             closeMenu();
                             return;
                         }
 
-                        await switchVersion(
-                            source
+                        switchVersion(
+                            source.Id
                         );
                     }
                 );
 
-                menu.appendChild(row);
+                return row;
             }
         );
-
-        return menu;
     }
 
     function positionMenu(
@@ -866,48 +862,39 @@
         const rect =
             button.getBoundingClientRect();
 
-        const menuWidth =
-            menu.offsetWidth;
-
-        const menuHeight =
-            menu.offsetHeight;
+        const menuRect =
+            menu.getBoundingClientRect();
 
         let left =
-            rect.right -
-            menuWidth;
+            rect.left;
 
         let top =
             rect.top -
-            menuHeight -
+            menuRect.height -
             8;
 
-        if (left < 8) {
-            left = 8;
-        }
-
-        if (top < 8) {
+        if (
+            top < 8
+        ) {
             top =
-                rect.bottom + 8;
+                rect.bottom +
+                8;
         }
 
         if (
-            left + menuWidth >
-            window.innerWidth - 8
+            left +
+            menuRect.width >
+            window.innerWidth -
+            8
         ) {
             left =
                 window.innerWidth -
-                menuWidth -
+                menuRect.width -
                 8;
         }
 
-        if (
-            top + menuHeight >
-            window.innerHeight - 8
-        ) {
-            top =
-                window.innerHeight -
-                menuHeight -
-                8;
+        if (left < 8) {
+            left = 8;
         }
 
         menu.style.left =
@@ -923,45 +910,84 @@
         const onPointerDown =
             event => {
                 if (
-                    !menu.contains(
+                    menu.contains(
                         event.target
-                    ) &&
-                    event.target.id !==
-                        BUTTON_ID
+                    )
                 ) {
-                    event.preventDefault();
-                    event.stopImmediatePropagation();
-
-                    closeMenu();
+                    return;
                 }
-            };
 
-        const onClick =
-            event => {
                 if (
-                    !menu.contains(
-                        event.target
-                    ) &&
-                    event.target.id !==
-                        BUTTON_ID
+                    event.target.closest(
+                        `#${BUTTON_ID}`
+                    )
                 ) {
-                    event.preventDefault();
-                    event.stopImmediatePropagation();
-
-                    closeMenu();
+                    return;
                 }
+
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+
+                closeMenu();
             };
 
         const onKeyDown =
             event => {
                 if (
-                    event.key ===
+                    event.key !==
                     "Escape"
                 ) {
-                    event.preventDefault();
-                    event.stopImmediatePropagation();
+                    return;
+                }
 
+                if (
+                    !document.getElementById(
+                        MENU_ID
+                    )
+                ) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+
+                closeMenu();
+            };
+
+        const onFullscreenChange =
+            () => {
+                if (
+                    !document.fullscreenElement &&
+                    document.getElementById(
+                        MENU_ID
+                    )
+                ) {
                     closeMenu();
+                }
+            };
+
+        const onResize =
+            () => {
+                const button =
+                    document.getElementById(
+                        BUTTON_ID
+                    );
+
+                const currentMenu =
+                    document.getElementById(
+                        MENU_ID
+                    );
+
+                if (
+                    button &&
+                    currentMenu
+                ) {
+                    positionMenu(
+                        currentMenu,
+                        button
+                    );
                 }
             };
 
@@ -972,34 +998,15 @@
         );
 
         document.addEventListener(
-            "click",
-            onClick,
-            true
-        );
-
-        document.addEventListener(
             "keydown",
             onKeyDown,
             true
         );
 
-        const onResize =
-            () => {
-                const button =
-                    document.getElementById(
-                        BUTTON_ID
-                    );
-
-                if (
-                    menu.isConnected &&
-                    button
-                ) {
-                    positionMenu(
-                        menu,
-                        button
-                    );
-                }
-            };
+        document.addEventListener(
+            "fullscreenchange",
+            onFullscreenChange
+        );
 
         window.addEventListener(
             "resize",
@@ -1015,15 +1022,14 @@
                 );
 
                 document.removeEventListener(
-                    "click",
-                    onClick,
+                    "keydown",
+                    onKeyDown,
                     true
                 );
 
                 document.removeEventListener(
-                    "keydown",
-                    onKeyDown,
-                    true
+                    "fullscreenchange",
+                    onFullscreenChange
                 );
 
                 window.removeEventListener(
@@ -1033,130 +1039,376 @@
             };
     }
 
-    async function switchVersion(
-        targetSource
-    ) {
-        const playback =
-            getCurrentPlayback();
-
+    async function openVersionMenu() {
         if (
-            !playback.pm ||
-            !playback.item ||
-            !targetSource
+            menuOpening ||
+            switchInProgress
         ) {
             return;
         }
 
-        const {
-            pm,
-            item,
-            source: currentSource
-        } = playback;
+        menuOpening = true;
 
-        const video =
-            getVideo();
+        const operation =
+            ++menuOperation;
 
-        if (!video) {
+        try {
+            const video =
+                getVideo();
+
+            if (!video) {
+                menuOpening = false;
+                return;
+            }
+
+            const playback =
+                getCurrentPlayback();
+
+            if (
+                !playback.pm ||
+                !playback.item
+            ) {
+                menuOpening = false;
+                return;
+            }
+
+            const {
+                pm,
+                item,
+                source: currentSource
+            } = playback;
+
+            const positionTicks =
+                Math.floor(
+                    video.currentTime *
+                    10000000
+                );
+
+            const menu =
+                createLoadingMenu();
+
+            document.body.appendChild(
+                menu
+            );
+
+            const button =
+                document.getElementById(
+                    BUTTON_ID
+                );
+
+            if (
+                button
+            ) {
+                positionMenu(
+                    menu,
+                    button
+                );
+            }
+
+            installMenuListeners(
+                menu
+            );
+
+            log(
+                "Menú mostrado inmediatamente."
+            );
+
+            const sources =
+                await pm.getPlaybackMediaSources(
+                    item,
+                    {
+                        startPositionTicks:
+                            positionTicks
+                    }
+                );
+
+            if (
+                operation !==
+                    menuOperation ||
+                switchInProgress
+            ) {
+                return;
+            }
+
+            if (
+                !sources?.length
+            ) {
+                warn(
+                    TEXT.noSources
+                );
+
+                menu.textContent =
+                    TEXT.noSources;
+
+                return;
+            }
+
+            replaceMenuContent(
+                menu,
+                sources,
+                currentSource
+            );
+
+            if (
+                operation !==
+                menuOperation
+            ) {
+                return;
+            }
+
+            positionMenu(
+                menu,
+                button
+            );
+
+            menuOpening = false;
+
+            log(
+                "Fuentes cargadas:",
+                sources.length
+            );
+        } catch (e) {
+            if (
+                operation ===
+                menuOperation
+            ) {
+                error(
+                    "Error obteniendo fuentes:",
+                    e
+                );
+
+                const menu =
+                    document.getElementById(
+                        MENU_ID
+                    );
+
+                if (menu) {
+                    menu.textContent =
+                        TEXT.noSources;
+                }
+
+                menuOpening = false;
+            }
+        }
+    }
+
+    async function switchVersion(
+        sourceId
+    ) {
+        if (
+            switchInProgress
+        ) {
             return;
         }
 
         switchInProgress = true;
         setButtonLocked(true);
 
-        const positionTicks =
-            Math.floor(
-                video.currentTime *
-                10000000
-            );
-
-        const currentAudio =
-            getAudioStream(
-                currentSource
-            );
-
-        const currentSubtitle =
-            getSubtitleStream(
-                currentSource
-            );
-
-        const audioLanguage =
-            getStreamLanguage(
-                currentAudio
-            );
-
-        const subtitleLanguage =
-            getStreamLanguage(
-                currentSubtitle
-            );
-
-        const targetAudio =
-            findMatchingAudio(
-                targetSource,
-                audioLanguage
-            );
-
-        const targetSubtitle =
-            findMatchingSubtitle(
-                targetSource,
-                subtitleLanguage
-            );
-
-        log(
-            "Cambiando a:",
-            getResolution(
-                targetSource
-            )
-        );
-
-        log(
-            "Posición:",
-            video.currentTime.toFixed(2),
-            "s"
-        );
-
-        if (audioLanguage) {
-            log(
-                "Audio:",
-                audioLanguage,
-                "compatible:",
-                !!targetAudio
-            );
-        }
-
-        if (subtitleLanguage) {
-            log(
-                "Subtítulo:",
-                subtitleLanguage,
-                "compatible:",
-                !!targetSubtitle
-            );
-        }
-
-        closeMenu();
-
         try {
+            const video =
+                getVideo();
+
+            const playback =
+                getCurrentPlayback();
+
+            if (
+                !video ||
+                !playback.pm ||
+                !playback.player ||
+                !playback.item
+            ) {
+                return;
+            }
+
+            const {
+                pm,
+                player,
+                item
+            } = playback;
+
+            const position =
+                Math.floor(
+                    video.currentTime *
+                    10000000
+                );
+
+            const currentSource =
+                pm.currentMediaSource(
+                    player
+                );
+
+            const currentIndexes =
+                getCurrentStreamIndexes(
+                    pm,
+                    player
+                );
+
+            log(
+                "Índices actuales:",
+                currentIndexes
+            );
+
+            const sources =
+                await pm.getPlaybackMediaSources(
+                    item,
+                    {
+                        startPositionTicks:
+                            position
+                    }
+                );
+
+            const targetSource =
+                sources?.find(
+                    source =>
+                        source.Id ===
+                        sourceId
+                );
+
+            if (!targetSource) {
+                warn(
+                    TEXT.noSources
+                );
+                return;
+            }
+
+            let audioStreamIndex =
+                null;
+
+            let subtitleStreamIndex =
+                null;
+
+            /*
+             * Preserve subtitle OFF state.
+             *
+             * Jellyfin uses -1 when subtitles
+             * are currently disabled.
+             */
+            if (
+                currentIndexes.subtitleStreamIndex ===
+                -1
+            ) {
+                subtitleStreamIndex = -1;
+
+                log(
+                    "Subtítulos apagados: se preservará el estado OFF."
+                );
+            }
+
+            if (
+                currentIndexes.audioStreamIndex !==
+                    null &&
+                currentSource?.MediaStreams
+            ) {
+                const currentAudio =
+                    currentSource.MediaStreams.find(
+                        stream =>
+                            stream.Type === "Audio" &&
+                            stream.Index ===
+                                currentIndexes.audioStreamIndex
+                    );
+
+                const currentAudioLanguage =
+                    getStreamLanguage(
+                        currentAudio
+                    );
+
+                const targetAudio =
+                    findMatchingAudio(
+                        targetSource,
+                        currentAudioLanguage
+                    );
+
+                if (targetAudio) {
+                    audioStreamIndex =
+                        targetAudio.Index;
+
+                    log(
+                        "Audio preservado:",
+                        currentAudioLanguage,
+                        "->",
+                        targetAudio.Index
+                    );
+                }
+            }
+
+            if (
+                currentIndexes.subtitleStreamIndex !==
+                    null &&
+                currentIndexes.subtitleStreamIndex >= 0 &&
+                currentSource?.MediaStreams
+            ) {
+                const currentSubtitle =
+                    currentSource.MediaStreams.find(
+                        stream =>
+                            stream.Type === "Subtitle" &&
+                            stream.Index ===
+                                currentIndexes.subtitleStreamIndex
+                    );
+
+                const currentSubtitleLanguage =
+                    getStreamLanguage(
+                        currentSubtitle
+                    );
+
+                const targetSubtitle =
+                    findMatchingSubtitle(
+                        targetSource,
+                        currentSubtitle
+                    );
+
+                if (targetSubtitle) {
+                    subtitleStreamIndex =
+                        targetSubtitle.Index;
+
+                    log(
+                        "Subtítulo preservado:",
+                        currentSubtitleLanguage,
+                        "->",
+                        targetSubtitle.Index
+                    );
+                }
+            }
+
+            closeMenu();
+
             await pm.play({
                 items: [item],
                 startPositionTicks:
-                    positionTicks,
+                    position,
                 mediaSourceId:
-                    targetSource.Id
+                    sourceId,
+
+                ...(audioStreamIndex !== null
+                    ? {
+                        audioStreamIndex:
+                            audioStreamIndex
+                    }
+                    : {}),
+
+                ...(subtitleStreamIndex !== null
+                    ? {
+                        subtitleStreamIndex:
+                            subtitleStreamIndex
+                    }
+                    : {})
             });
 
             await waitForSourceChange(
                 pm,
-                targetSource.Id,
-                10000
+                player,
+                sourceId
             );
 
             log(
                 TEXT.completed
             );
+
         } catch (e) {
             error(
-                "Error cambiando de versión:",
+                "Error cambiando versión:",
                 e
             );
+
         } finally {
             switchInProgress = false;
             setButtonLocked(false);
@@ -1165,32 +1417,29 @@
 
     async function waitForSourceChange(
         pm,
+        player,
         targetSourceId,
-        timeout
+        timeout = 10000
     ) {
         const start =
             Date.now();
 
         while (
-            Date.now() - start <
+            Date.now() -
+            start <
             timeout
         ) {
             try {
-                const player =
-                    pm.getCurrentPlayer();
+                const source =
+                    pm.currentMediaSource(
+                        player
+                    );
 
-                if (player) {
-                    const source =
-                        pm.currentMediaSource(
-                            player
-                        );
-
-                    if (
-                        source?.Id ===
-                        targetSourceId
-                    ) {
-                        return true;
-                    }
+                if (
+                    source?.Id ===
+                    targetSourceId
+                ) {
+                    return true;
                 }
             } catch {}
 
@@ -1203,41 +1452,54 @@
             );
         }
 
-        throw new Error(
-            "Timeout esperando cambio de fuente."
-        );
+        return false;
     }
 
     function monitor() {
         const url =
             location.href;
 
-        if (url !== lastUrl) {
+        if (
+            url !==
+            lastUrl
+        ) {
+            lastUrl =
+                url;
+
             log(
-                "Navegación:",
-                lastUrl,
-                "→",
-                url
+                "URL cambió."
             );
 
-            lastUrl = url;
+            activeControls =
+                null;
 
-            activeControls = null;
-            activeVideo = null;
-            activeItemId = null;
+            activeVideo =
+                null;
+
+            activeItemId =
+                null;
+
+            setTimeout(
+                ensureButton,
+                50
+            );
         }
 
         const video =
             getVideo();
 
-        if (video !== activeVideo) {
-            activeVideo = video;
+        if (
+            video !==
+            activeVideo
+        ) {
+            activeVideo =
+                video;
 
-            if (video) {
-                log(
-                    "Nuevo elemento <video>."
-                );
-            }
+            activeControls =
+                null;
+
+            activeItemId =
+                null;
         }
 
         const playback =
@@ -1248,41 +1510,36 @@
             null;
 
         if (
-            itemId !== activeItemId
+            itemId !==
+            activeItemId
         ) {
             activeItemId =
                 itemId;
 
-            if (itemId) {
-                log(
-                    "Nueva reproducción:",
-                    itemId,
-                    "|",
-                    getResolution(
-                        playback.source
-                    )
-                );
-            }
+            activeControls =
+                null;
         }
 
-        ensureButton();
+        if (
+            !switchInProgress
+        ) {
+            ensureButton();
+        }
     }
 
     function startObserver() {
-        if (domObserver) {
-            return;
-        }
+        try {
+            domObserver?.disconnect();
+        } catch {}
 
         domObserver =
-            new MutationObserver(
-                () => {
-                    if (
-                        !switchInProgress
-                    ) {
-                        ensureButton();
-                    }
+            new MutationObserver(() => {
+                if (
+                    !switchInProgress
+                ) {
+                    ensureButton();
                 }
-            );
+            });
 
         domObserver.observe(
             document.body,
@@ -1294,13 +1551,17 @@
     }
 
     function initialize() {
-        log(
-            "Inicializando V1.2.8."
-        );
-
         startObserver();
 
         ensureButton();
+
+        if (
+            monitorTimer
+        ) {
+            clearInterval(
+                monitorTimer
+            );
+        }
 
         monitorTimer =
             setInterval(
@@ -1308,22 +1569,30 @@
                 500
             );
 
-        log(
-            "Monitor activo."
-        );
+        const retries = [
+            50,
+            150,
+            300,
+            500,
+            800,
+            1200,
+            1800,
+            2500,
+            3500,
+            5000,
+            7000,
+            10000
+        ];
+
+        for (
+            const delay of retries
+        ) {
+            setTimeout(
+                ensureButton,
+                delay
+            );
+        }
     }
 
-    if (
-        document.readyState ===
-        "loading"
-    ) {
-        document.addEventListener(
-            "DOMContentLoaded",
-            initialize,
-            { once: true }
-        );
-    } else {
-        initialize();
-    }
-
+    initialize();
 })();
