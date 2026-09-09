@@ -31,7 +31,7 @@ The JavaScript Injector project provides version-specific repository manifests f
 
 ### 2. Import Version Switcher
 
-The recommended installation method is now to import the latest stable **`.json`** configuration exported by JavaScript Injector.
+The recommended installation method is to import the latest stable **`.json`** configuration exported by JavaScript Injector.
 
 1. Open **Dashboard → Plugins → JavaScript Injector**.
 2. Use the **Import** option.
@@ -52,23 +52,14 @@ For Jellyfin 10.11 Docker installations, JavaScript Injector recommends having t
 
 ## Features
 
-- Native-looking Version Switcher button in the Jellyfin video player.
-- Switches between available Media Sources without leaving playback.
-- Preserves the current playback position.
-- Preserves the currently selected audio track when an equivalent track is available.
-- Preserves the currently selected subtitle track when an equivalent track is available.
+- Switch between available 4K and 1080p versions directly from the Jellyfin player.
+- Keeps your current playback position when switching.
+- Preserves the selected audio and subtitle tracks when possible.
 - Preserves subtitles being turned off.
-- Detects forced subtitles using both Jellyfin metadata and common track naming conventions.
-- Shows resolution and bitrate for each available source.
-- Correctly classifies common cinematic 4K and 1080p resolutions based on video width.
-- Detects the currently playing source.
-- English and Spanish UI support.
-- Instant menu opening with sources loaded asynchronously.
-- ESC and outside-click menu closing.
-- Automatically closes the menu when fullscreen is exited.
-- Protection against rapid repeated clicks.
-- Recovers when Jellyfin rebuilds its video controls.
-- Designed for Jellyfin Web and tested with the iOS Jellyfin client.
+- Keeps forced subtitles matched correctly across versions.
+- Shows resolution and bitrate for each version.
+- Fast menu with English and Spanish UI.
+- Automatically closes the menu when exiting fullscreen.
 
 ## Known Limitations
 
