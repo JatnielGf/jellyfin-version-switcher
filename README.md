@@ -4,7 +4,7 @@ A lightweight Jellyfin Web version switcher for quickly switching between availa
 
 ## Current Version
 
-**v1.2.8 — Stable**
+**v1.3.0 — Stable**
 
 ## Installation
 
@@ -29,15 +29,22 @@ For Jellyfin 10.11:
 
 The JavaScript Injector project provides version-specific repository manifests for Jellyfin 10.11 and other supported versions.
 
-### 2. Add Version Switcher
+### 2. Import Version Switcher
+
+The recommended installation method is now to import the latest stable **`.json`** configuration exported by JavaScript Injector.
 
 1. Open **Dashboard → Plugins → JavaScript Injector**.
-2. Click **Add Script**.
-3. Give the script a name, for example `Jellyfin Version Switcher`.
-4. Copy the complete source from [`src/version-switcher.js`](src/version-switcher.js).
-5. Paste it into the JavaScript code field.
-6. Enable the script and save.
-7. Reload Jellyfin Web. A hard refresh (`Ctrl+Shift+R`) may be required.
+2. Use the **Import** option.
+3. Download the latest stable Version Switcher `.json` file from the project's [GitHub Releases](https://github.com/JatnielGf/jellyfin-version-switcher/releases).
+4. Import the `.json` file into JavaScript Injector.
+5. Enable the imported **Jellyfin Version Switcher** script if necessary.
+6. Reload Jellyfin Web. A hard refresh (`Ctrl+Shift+R`) may be required.
+
+This `.json` import is the recommended installation method. You do **not** need to manually copy and paste the JavaScript source code.
+
+### Manual installation
+
+The JavaScript source is still available in [`src/version-switcher.js`](src/version-switcher.js) for development, inspection, and manual installation if needed.
 
 ### Docker note
 
@@ -48,21 +55,25 @@ For Jellyfin 10.11 Docker installations, JavaScript Injector recommends having t
 - Native-looking Version Switcher button in the Jellyfin video player.
 - Switches between available Media Sources without leaving playback.
 - Preserves the current playback position.
+- Preserves the currently selected audio track when an equivalent track is available.
+- Preserves the currently selected subtitle track when an equivalent track is available.
+- Preserves subtitles being turned off.
+- Detects forced subtitles using both Jellyfin metadata and common track naming conventions.
 - Shows resolution and bitrate for each available source.
+- Correctly classifies common cinematic 4K and 1080p resolutions based on video width.
 - Detects the currently playing source.
 - English and Spanish UI support.
+- Instant menu opening with sources loaded asynchronously.
 - ESC and outside-click menu closing.
+- Automatically closes the menu when fullscreen is exited.
 - Protection against rapid repeated clicks.
 - Recovers when Jellyfin rebuilds its video controls.
 - Designed for Jellyfin Web and tested with the iOS Jellyfin client.
 
 ## Known Limitations
 
-- ESC in fullscreen currently exits fullscreen before closing the Version Switcher menu.
-- Audio and subtitle matching is detected but not automatically enforced.
 - Windows Desktop, Android, Fire TV, LG webOS, and Wholphin are currently not supported.
-- A small delay may occasionally occur while retrieving Media Sources.
-- Some cinematic resolutions may currently be classified incorrectly.
+- Jellyfin Web internals used by the switcher may change in future Jellyfin releases and could require updates to the script.
 
 ## Version History
 
