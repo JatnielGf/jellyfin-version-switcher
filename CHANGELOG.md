@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.4.0] - Stable
+
+### Added
+
+- Added compatibility with Jellyfin 12.
+- Maintained compatibility with Jellyfin 10.11.x.
+- Added automatic PlaybackManager detection for different Jellyfin Web versions.
+
+### Improvements
+
+- Improved compatibility with Jellyfin 12's updated Webpack structure.
+- Improved detection of the active Jellyfin video controls across different Web UI layouts.
+- Improved Version Switcher initialization and recovery when Jellyfin rebuilds the video controls.
+- Improved compatibility with Jellyfin SPA navigation.
+
+### Compatibility
+
+- Tested with Jellyfin 12 and Jellyfin 10.11.x.
+- Requires JavaScript Injector v4.0.0.0 or newer.
+- Windows Desktop, Android, Fire TV, LG webOS, and Wholphin are currently not supported.
+
 ## [1.3.0] - Stable
 
 ### Added
