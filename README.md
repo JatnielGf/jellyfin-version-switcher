@@ -4,7 +4,18 @@ A lightweight Jellyfin Web version switcher for quickly switching between availa
 
 ## Current Version
 
-**v1.3.0 — Stable**
+**v1.4.0 — Stable**
+
+> **Jellyfin 12 supported!** Version 1.4.0 is compatible with both **Jellyfin 12** and **Jellyfin 10.11**, using the same script.
+
+## Compatibility
+
+| Jellyfin version | Version Switcher | JavaScript Injector |
+|---|---|---|
+| **12.x** | ✅ v1.4.0+ | JavaScript Injector **v4.0.0.0+** |
+| **10.11.x** | ✅ v1.4.0+ | JavaScript Injector **v4.0.0.0+** |
+
+The JavaScript Injector project provides different plugin repository manifests depending on the Jellyfin version. Make sure you add the manifest that matches your Jellyfin installation.
 
 ## Installation
 
@@ -12,9 +23,11 @@ A lightweight Jellyfin Web version switcher for quickly switching between availa
 
 JavaScript Injector is **not included by default** with Jellyfin. It is a separate community plugin that must be installed first.
 
-Official plugin repository: [Jellyfin JavaScript Injector](https://github.com/n00bcodr/Jellyfin-JavaScript-Injector)
+Official plugin project: [Jellyfin JavaScript Injector](https://github.com/n00bcodr/Jellyfin-JavaScript-Injector)
 
-For Jellyfin 10.11:
+> **Important:** JavaScript Injector v4.0.0.0 added Jellyfin 12 support. Jellyfin 10.11 and Jellyfin 12 use different plugin repository manifests.
+
+#### For Jellyfin 10.11.x
 
 1. Open **Dashboard → Plugins → Catalog → ⚙️**.
 2. Click **➕** to add a plugin repository.
@@ -27,7 +40,20 @@ For Jellyfin 10.11:
 6. Return to **Catalog**, search for **JavaScript Injector**, and install it.
 7. Restart the Jellyfin server.
 
-The JavaScript Injector project provides version-specific repository manifests for Jellyfin 10.11 and other supported versions.
+#### For Jellyfin 12.x
+
+1. Open **Dashboard → Plugins → Catalog → ⚙️**.
+2. Click **➕** to add a plugin repository.
+3. Give it a name such as `JavaScript Injector Repo`.
+4. Add this repository URL:
+
+   `https://raw.githubusercontent.com/n00bcodr/jellyfin-plugins/main/12/manifest.json`
+
+5. Click **Save**.
+6. Return to **Catalog**, search for **JavaScript Injector**, and install it.
+7. Restart the Jellyfin server.
+
+JavaScript Injector v4.0.0.0 is the version that adds Jellyfin 12 support. The project also provides the 10.11-specific manifest for Jellyfin 10.11 installations.
 
 ### 2. Import Version Switcher
 
@@ -38,7 +64,8 @@ The recommended installation method is to import the latest stable **`.json`** c
 3. Download the latest stable Version Switcher `.json` file from the project's [GitHub Releases](https://github.com/JatnielGf/jellyfin-version-switcher/releases).
 4. Import the `.json` file into JavaScript Injector.
 5. Enable the imported **Jellyfin Version Switcher** script if necessary.
-6. Reload Jellyfin Web. A hard refresh (`Ctrl+Shift+R`) may be required.
+6. Reload Jellyfin Web.
+7. If the script or button does not appear, perform a hard refresh with **Ctrl+Shift+R**.
 
 This `.json` import is the recommended installation method. You do **not** need to manually copy and paste the JavaScript source code.
 
@@ -48,7 +75,7 @@ The JavaScript source is still available in [`src/version-switcher.js`](src/vers
 
 ### Docker note
 
-For Jellyfin 10.11 Docker installations, JavaScript Injector recommends having the **File Transformation** plugin installed to avoid permission and injection issues.
+For Docker installations, JavaScript Injector recommends having the **File Transformation** plugin installed to avoid permission and injection issues.
 
 ## Features
 
@@ -60,6 +87,7 @@ For Jellyfin 10.11 Docker installations, JavaScript Injector recommends having t
 - Shows resolution and bitrate for each version.
 - Fast menu with English and Spanish UI.
 - Automatically closes the menu when exiting fullscreen.
+- Compatible with both **Jellyfin 10.11.x and Jellyfin 12.x**.
 
 ## Known Limitations
 
