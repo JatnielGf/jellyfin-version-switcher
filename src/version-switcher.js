@@ -1,7 +1,7 @@
 (() => {
     "use strict";
 
-    const VERSION = "1.3.0";
+    const VERSION = "1.4.0";
 
     const BUTTON_ID = "version-switcher-native-button";
     const MENU_ID = "version-switcher-native-menu";
@@ -22,14 +22,16 @@
             unknown: "Desconocida",
             loading: "Cargando...",
             noSources: "No se encontraron fuentes.",
-            completed: "Cambio completado."
+            completed: "Cambio completado.",
+            noPlaybackManager: "No se pudo localizar el PlaybackManager interno."
         }
         : {
             version: "Version",
             unknown: "Unknown",
             loading: "Loading...",
             noSources: "No sources found.",
-            completed: "Switch completed."
+            completed: "Switch completed.",
+            noPlaybackManager: "Could not locate the internal PlaybackManager."
         };
 
     let switchInProgress = false;
@@ -45,6 +47,46 @@
     let domObserver = null;
     let controlsObserver = null;
     let monitorTimer = null;
+
+    // Cache del PlaybackManager una vez localizado, para no re-escanear
+    // cientos/miles de módulos de webpack en cada llamada.
+    let cachedPlaybackManager = null;
+
+    // Nombres posibles de la variable global usada por webpack para el
+    // chunk-loading. El nombre por defecto depende del "output.chunkLoadingGlobal"
+    // configurado en el build de jellyfin-web, que puede cambiar entre
+    // versiones/toolchains (p.ej. tras el salto a Node 24 / nuevas versiones
+    // de webpack en Jellyfin 12). Probamos varios candidatos conocidos.
+    const CHUNK_GLOBAL_CANDIDATES = [
+        "webpackChunkjellyfin_web",
+        "webpackChunk_jellyfin_web",
+        "webpackChunkjellyfin-web",
+        "webpackChunk"
+    ];
+
+    // Selectores de respaldo para la barra de controles del OSD de video.
+    // El primero es el usado históricamente por el layout "Classic".
+    // Los siguientes son variantes más laxas por si el layout "Modern"
+    // (apps/experimental, ahora default en Jellyfin 12) usa nombres de
+    // clase distintos.
+    const CONTROLS_SELECTORS = [
+        ".videoOsdBottom .buttons",
+        ".osdControls .buttons",
+        "[class*='videoOsd'] [class*='buttons']",
+        "[class*='Osd'][class*='bottom'] [class*='buttons']",
+        "[class*='osd'][class*='bottom'] [class*='buttons']"
+    ];
+
+    // Selectores de respaldo para el botón de ajustes, usado como ancla
+    // para insertar el botón de la extensión justo antes de él.
+    const SETTINGS_BUTTON_SELECTORS = [
+        ".btnVideoOsdSettings",
+        "[class*='btnVideoOsdSettings']",
+        "button[title*='Settings' i]",
+        "button[aria-label*='Settings' i]",
+        "button[title*='Ajustes' i]",
+        "button[aria-label*='Ajustes' i]"
+    ];
 
     try {
         window.__versionSwitcherCleanup?.();
@@ -83,29 +125,125 @@
         console.error("[Version Switcher]", ...args);
     }
 
-    function getPlaybackManager() {
+    /**
+     * Comprueba si un objeto "tiene la forma" del PlaybackManager de
+     * jellyfin-web, en base a los métodos que este script necesita.
+     * Se usa duck typing en vez de un ID de módulo webpack fijo, porque
+     * ese ID cambia en cada build y no es algo que se pueda fijar de
+     * forma fiable entre versiones (10.11, 12.0, futuras).
+     */
+    function looksLikePlaybackManager(candidate) {
+        if (!candidate || typeof candidate !== "object") {
+            return false;
+        }
+
+        const requiredMethods = [
+            "currentItem",
+            "currentMediaSource",
+            "getPlaybackMediaSources",
+            "getCurrentPlayer",
+            "play"
+        ];
+
+        return requiredMethods.every(
+            method => typeof candidate[method] === "function"
+        );
+    }
+
+    function scanModuleForPlaybackManager(mod) {
+        if (!mod) {
+            return null;
+        }
+
+        const candidates = [
+            mod,
+            mod.default
+        ];
+
         try {
-            let found = null;
+            for (const value of Object.values(mod)) {
+                candidates.push(value);
+            }
+        } catch {}
 
-            window.webpackChunk?.push([
-                [Symbol()],
-                {},
-                require => {
-                    try {
-                        if (require.m && require.m[39738]) {
-                            const mod = require(39738);
+        for (const candidate of candidates) {
+            if (looksLikePlaybackManager(candidate)) {
+                return candidate;
+            }
+        }
 
-                            if (
-                                mod?.f?.getPlaybackMediaSources
-                            ) {
-                                found = mod.f;
-                            }
-                        }
-                    } catch {}
+        return null;
+    }
+
+    function getPlaybackManager() {
+        if (cachedPlaybackManager) {
+            return cachedPlaybackManager;
+        }
+
+        let found = null;
+
+        const scanRequire = require => {
+            try {
+                if (!require?.m) {
+                    return;
                 }
-            ]);
 
-            return found;
+                const moduleIds = Object.keys(require.m);
+
+                for (const id of moduleIds) {
+                    if (found) {
+                        return;
+                    }
+
+                    let mod;
+
+                    try {
+                        mod = require(id);
+                    } catch {
+                        continue;
+                    }
+
+                    const match =
+                        scanModuleForPlaybackManager(mod);
+
+                    if (match) {
+                        found = match;
+                        return;
+                    }
+                }
+            } catch (e) {
+                warn(
+                    "Error escaneando módulos de webpack:",
+                    e
+                );
+            }
+        };
+
+        try {
+            for (const globalName of CHUNK_GLOBAL_CANDIDATES) {
+                if (found) {
+                    break;
+                }
+
+                const chunkArray = window[globalName];
+
+                if (!chunkArray || typeof chunkArray.push !== "function") {
+                    continue;
+                }
+
+                try {
+                    chunkArray.push([
+                        [Symbol()],
+                        {},
+                        scanRequire
+                    ]);
+                } catch (e) {
+                    warn(
+                        `No se pudo usar la variable global "${globalName}":`,
+                        e
+                    );
+                }
+            }
         } catch (e) {
             error(
                 "Error obteniendo PlaybackManager:",
@@ -114,6 +252,15 @@
 
             return null;
         }
+
+        if (found) {
+            cachedPlaybackManager = found;
+            log("PlaybackManager localizado y cacheado.");
+        } else {
+            warn(TEXT.noPlaybackManager);
+        }
+
+        return found;
     }
 
     function getCurrentStreamIndexes(
@@ -236,13 +383,31 @@
         );
     }
 
+    function queryAllSelectors(selectors) {
+        const results = [];
+
+        for (const selector of selectors) {
+            try {
+                results.push(
+                    ...Array.from(
+                        document.querySelectorAll(selector)
+                    )
+                );
+            } catch (e) {
+                warn(
+                    `Selector inválido "${selector}":`,
+                    e
+                );
+            }
+        }
+
+        // Deduplicar preservando el orden.
+        return Array.from(new Set(results));
+    }
+
     function getActiveControls() {
         const candidates =
-            Array.from(
-                document.querySelectorAll(
-                    ".videoOsdBottom .buttons"
-                )
-            );
+            queryAllSelectors(CONTROLS_SELECTORS);
 
         if (!candidates.length) {
             return null;
@@ -252,9 +417,7 @@
             controls =>
                 controls.isConnected &&
                 isVisible(controls) &&
-                controls.querySelector(
-                    ".btnVideoOsdSettings"
-                )
+                findSettingsButton(controls)
         );
 
         if (!valid.length) {
@@ -265,8 +428,8 @@
             valid.filter(controls => {
                 const osd =
                     controls.closest(
-                        ".videoOsdBottom"
-                    );
+                        "[class*='videoOsd'], [class*='Osd'], .videoOsdBottom"
+                    ) || controls.parentElement;
 
                 return osd && isVisible(osd);
             });
@@ -276,6 +439,21 @@
         }
 
         return valid[0];
+    }
+
+    function findSettingsButton(controls) {
+        for (const selector of SETTINGS_BUTTON_SELECTORS) {
+            try {
+                const button =
+                    controls.querySelector(selector);
+
+                if (button) {
+                    return button;
+                }
+            } catch {}
+        }
+
+        return null;
     }
 
     function getResolution(source) {
@@ -498,13 +676,7 @@
         }
 
         const settingsButton =
-            controls.querySelector(
-                ".btnVideoOsdSettings"
-            );
-
-        if (!settingsButton) {
-            return false;
-        }
+            findSettingsButton(controls);
 
         const existing =
             controls.querySelector(
@@ -565,10 +737,17 @@
             true
         );
 
-        controls.insertBefore(
-            button,
-            settingsButton
-        );
+        if (settingsButton) {
+            controls.insertBefore(
+                button,
+                settingsButton
+            );
+        } else {
+            // No se encontró el botón de ajustes como ancla (posible
+            // cambio de clases en el layout Modern): se añade al final
+            // de la barra de controles como respaldo.
+            controls.appendChild(button);
+        }
 
         return true;
     }
@@ -1551,6 +1730,10 @@
     }
 
     function initialize() {
+        log(
+            `Inicializando v${VERSION}...`
+        );
+
         startObserver();
 
         ensureButton();
