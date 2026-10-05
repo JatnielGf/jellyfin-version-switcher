@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.5.0] - Stable
+
+### Added
+
+- Added Custom Version Names derived directly from media filenames.
+- Added global and per-movie/per-series Custom Names settings.
+- Added server-side Custom Names synchronization through the Jellyfin plugin.
+- Added administrator-controlled permissions for changing Custom Names settings.
+- Added optional Debug Logging in the plugin configuration.
+- Added LG webOS support, including remote navigation and focus handling.
+- Added ABI-specific plugin builds for Jellyfin 10.11.x and Jellyfin 12.x.
+
+### Improvements
+
+- Improved MediaSource detection by combining library and active playback sources and removing duplicates.
+- Improved Playback Manager detection and resilience against module scan errors.
+- Improved compatibility with older browser APIs and Chromium-based webOS environments.
+- Improved menu navigation, focus handling, activation handling, and cleanup.
+- Custom Names configurations are automatically migrated to the new format.
+- Switching versions continues to preserve playback position, audio language, subtitle language, and forced/default subtitle state.
+- Version Switcher is now distributed as a proper Jellyfin plugin and automatically registers its script with JavaScript Injector.
+- No manual JavaScript copy/paste is required after the plugin and JavaScript Injector are installed.
+
+### Fixed
+
+- Fixed the Custom Names configuration synchronization issue that could prevent Debug Logging from working correctly.
+- Fixed cases where some versions were missing from the version selector when MediaSources were exposed differently by the library and active playback session.
+
+### Compatibility
+
+- Tested with Jellyfin 10.11.x and Jellyfin 12.x.
+- Requires JavaScript Injector v4.0.0.0 or newer.
+- Added LG webOS compatibility, including support for older Chromium-based webOS environments.
+
 ## [1.4.0] - Stable
 
 ### Added
