@@ -1,77 +1,55 @@
-# jellyfin-version-switcher
+# Version Switcher
 
-A lightweight Jellyfin Web version switcher for quickly switching between available media sources.
+A Jellyfin Web version switcher for quickly switching between available media sources, with Custom Names, server-side configuration, and LG webOS support.
 
 ## Current Version
 
-**v1.4.0 — Stable**
+**v1.5.0 — Stable**
 
-> **Jellyfin 12 supported!** Version 1.4.0 is compatible with both **Jellyfin 12** and **Jellyfin 10.11**, using the same script.
+Version 1.5.0 supports **Jellyfin 10.11.x and Jellyfin 12.x** through ABI-specific plugin builds distributed from a single plugin repository.
 
 ## Compatibility
 
 | Jellyfin version | Version Switcher | JavaScript Injector |
 |---|---|---|
-| **12.x** | ✅ v1.4.0+ | JavaScript Injector **v4.0.0.0+** |
-| **10.11.x** | ✅ v1.4.0+ | JavaScript Injector **v4.0.0.0+** |
-
-The JavaScript Injector project provides different plugin repository manifests depending on the Jellyfin version. Make sure you add the manifest that matches your Jellyfin installation.
+| **12.x** | ✅ v1.5.0 | JavaScript Injector **v4.0.0.0+** |
+| **10.11.x** | ✅ v1.5.0 | JavaScript Injector **v4.0.0.0+** |
 
 ## Installation
 
 ### 1. Install JavaScript Injector
 
-JavaScript Injector is **not included by default** with Jellyfin. It is a separate community plugin that must be installed first.
+JavaScript Injector is a separate community plugin and must be installed first.
 
-Official plugin project: [Jellyfin JavaScript Injector](https://github.com/n00bcodr/Jellyfin-JavaScript-Injector)
+Official project: https://github.com/n00bcodr/Jellyfin-JavaScript-Injector
 
-> **Important:** JavaScript Injector v4.0.0.0 added Jellyfin 12 support. Jellyfin 10.11 and Jellyfin 12 use different plugin repository manifests.
+Use the JavaScript Injector repository manifest that matches your Jellyfin version:
 
-#### For Jellyfin 10.11.x
+**Jellyfin 10.11.x**
+`https://raw.githubusercontent.com/n00bcodr/jellyfin-plugins/main/10.11/manifest.json`
 
-1. Open **Dashboard → Plugins → Catalog → ⚙️**.
-2. Click **➕** to add a plugin repository.
-3. Give it a name such as `JavaScript Injector Repo`.
-4. Add this repository URL:
+**Jellyfin 12.x**
+`https://raw.githubusercontent.com/n00bcodr/jellyfin-plugins/main/12/manifest.json`
 
-   `https://raw.githubusercontent.com/n00bcodr/jellyfin-plugins/main/10.11/manifest.json`
+Install JavaScript Injector v4.0.0.0 or newer, then restart Jellyfin if requested.
 
-5. Click **Save**.
-6. Return to **Catalog**, search for **JavaScript Injector**, and install it.
-7. Restart the Jellyfin server.
+### 2. Install Version Switcher
 
-#### For Jellyfin 12.x
+Version Switcher now has its own Jellyfin plugin repository. You only need to add **one repository URL**, regardless of whether you use Jellyfin 10.11 or Jellyfin 12.
 
-1. Open **Dashboard → Plugins → Catalog → ⚙️**.
-2. Click **➕** to add a plugin repository.
-3. Give it a name such as `JavaScript Injector Repo`.
-4. Add this repository URL:
+1. Open **Dashboard → Plugins → Repositories**.
+2. Add a repository named `Version Switcher`.
+3. Add this URL:
 
-   `https://raw.githubusercontent.com/n00bcodr/jellyfin-plugins/main/12/manifest.json`
+   `https://raw.githubusercontent.com/JatnielGf/jellyfin-version-switcher/main/manifest.json`
 
-5. Click **Save**.
-6. Return to **Catalog**, search for **JavaScript Injector**, and install it.
-7. Restart the Jellyfin server.
+4. Save the repository.
+5. Return to the plugin catalog and install **Version Switcher**.
+6. Restart Jellyfin if prompted.
 
-JavaScript Injector v4.0.0.0 is the version that adds Jellyfin 12 support. The project also provides the 10.11-specific manifest for Jellyfin 10.11 installations.
+The repository contains both ABI-specific builds. Jellyfin selects the compatible build automatically.
 
-### 2. Import Version Switcher
-
-The recommended installation method is to import the latest stable **`.json`** configuration exported by JavaScript Injector.
-
-1. Open **Dashboard → Plugins → JavaScript Injector**.
-2. Use the **Import** option.
-3. Download the latest stable Version Switcher `.json` file from the project's [GitHub Releases](https://github.com/JatnielGf/jellyfin-version-switcher/releases).
-4. Import the `.json` file into JavaScript Injector.
-5. Enable the imported **Jellyfin Version Switcher** script if necessary.
-6. Reload Jellyfin Web.
-7. If the script or button does not appear, perform a hard refresh with **Ctrl+Shift+R**.
-
-This `.json` import is the recommended installation method. You do **not** need to manually copy and paste the JavaScript source code.
-
-### Manual installation
-
-The JavaScript source is still available in [`src/version-switcher.js`](src/version-switcher.js) for development, inspection, and manual installation if needed.
+After installing Version Switcher and JavaScript Injector, **no manual JavaScript copy/paste is required**. The plugin automatically registers the Version Switcher script with JavaScript Injector.
 
 ### Docker note
 
@@ -79,26 +57,33 @@ For Docker installations, JavaScript Injector recommends having the **File Trans
 
 ## Features
 
-- Switch between available 4K and 1080p versions directly from the Jellyfin player.
-- Keeps your current playback position when switching.
-- Preserves the selected audio and subtitle tracks when possible.
-- Preserves subtitles being turned off.
-- Keeps forced subtitles matched correctly across versions.
+- Switch between available media versions directly from the Jellyfin player.
+- Custom version names derived automatically from filenames.
+- Example: `Movie - Director's Cut.mkv` can appear as **Director's Cut — 1080p**. The resolution is detected automatically; it does not need to be included in the filename.
+- Enable or disable Custom Names globally or for a specific movie or series.
+- Per-media settings override the global Custom Names setting.
+- Server-side Custom Names configuration with administrator-controlled editing permissions.
+- Preserves playback position when switching versions.
+- Preserves selected audio and subtitle tracks when possible.
+- Preserves forced/default subtitle state.
 - Shows resolution and bitrate for each version.
-- Fast menu with English and Spanish UI.
-- Automatically closes the menu when exiting fullscreen.
-- Compatible with both **Jellyfin 10.11.x and Jellyfin 12.x**.
-
-## Known Limitations
-
-- Windows Desktop, Android, Fire TV, LG webOS, and Wholphin are currently not supported.
-- Jellyfin Web internals used by the switcher may change in future Jellyfin releases and could require updates to the script.
+- Improved MediaSource detection across library and active playback sources.
+- Optional Debug Logging for troubleshooting.
+- LG webOS support, including remote navigation and focus handling.
+- English and Spanish UI.
+- Compatible with Jellyfin 10.11.x and Jellyfin 12.x.
 
 ## Version History
 
-See [`CHANGELOG.md`](CHANGELOG.md) for the project history.
+See [CHANGELOG.md](CHANGELOG.md) for the project history.
 
-Older stable versions will be preserved through Git history and GitHub Releases.
+Older stable versions are preserved through Git history and GitHub Releases.
+
+## Releases
+
+The installable plugin packages are published as ABI-specific assets in the GitHub Releases page:
+
+https://github.com/JatnielGf/jellyfin-version-switcher/releases
 
 ## Credits & Acknowledgements
 
